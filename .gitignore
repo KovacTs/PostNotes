@@ -12,6 +12,8 @@ build/
 *.zip
 *.tar.gz
 *.tgz
+bin/
+
 
 # Environment / Secret keys (CRITICAL)
 .env
