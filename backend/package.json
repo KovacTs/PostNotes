@@ -1,0 +1,36 @@
+{
+  "name": "postnotes-backend",
+  "version": "1.0.0",
+  "description": "Backend API and BullMQ worker for PostNotes application",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "worker": "node dist/worker.js",
+    "dev": "nodemon --watch \"src/**/*.ts\" --exec \"ts-node\" src/index.ts",
+    "dev:worker": "nodemon --watch \"src/**/*.ts\" --exec \"ts-node\" src/worker.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.14.0",
+    "axios": "^1.6.8",
+    "bullmq": "^5.8.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "ioredis": "^5.4.1",
+    "multer": "^1.4.5-lts.1",
+    "openai": "^4.47.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^20.12.12",
+    "nodemon": "^3.1.0",
+    "prisma": "^5.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}

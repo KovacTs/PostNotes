@@ -1,0 +1,48 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  name      String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  notes     Note[]
+}
+
+model Note {
+  id        String     @id @default(uuid())
+  title     String
+  content   Json?      // JSON block structure compatible with Tiptap / BlockNote
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  audioJobs AudioJob[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model AudioJob {
+  id            String     @id @default(uuid())
+  noteId        String
+  note          Note       @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  status        JobStatus  @default(PENDING)
+  filePath      String     // Local server path for the uploaded audio
+  transcription String?    // Raw text transcribed by Whisper
+  errorMessage  String?    // Detailed error trace if failed
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}

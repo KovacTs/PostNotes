@@ -1,0 +1,111 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: postnotes-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-postnotes}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postnotes_secure_password_2026}
+      POSTGRES_DB: ${DB_NAME:-postnotes}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: postnotes-redis
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  transcriber:
+    build:
+      context: ./transcriber
+      dockerfile: Dockerfile
+    container_name: postnotes-transcriber
+    volumes:
+      - shared_audio:/app/shared_audio
+      - whisper_cache:/root/.cache/huggingface
+    environment:
+      - WHISPER_MODELS_DIR=/root/.cache/huggingface
+      - WHISPER_CPU_THREADS=${WHISPER_CPU_THREADS:-4}
+      - WHISPER_NUM_WORKERS=${WHISPER_NUM_WORKERS:-1}
+    expose:
+      - "8000"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\")'"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+
+  backend-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: postnotes-backend-api
+    ports:
+      - "3000:3000"
+    volumes:
+      - shared_audio:/app/shared_audio
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-postnotes}:${DB_PASSWORD:-postnotes_secure_password_2026}@db:5432/${DB_NAME:-postnotes}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      TRANSCRIBER_URL: http://transcriber:8000
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      UPLOAD_DIR: /app/shared_audio
+      PORT: 3000
+      DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  backend-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: postnotes-backend-worker
+    command: npm run worker
+    volumes:
+      - shared_audio:/app/shared_audio
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-postnotes}:${DB_PASSWORD:-postnotes_secure_password_2026}@db:5432/${DB_NAME:-postnotes}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      TRANSCRIBER_URL: http://transcriber:8000
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      DELETE_AUDIO_AFTER_COMPLETION: ${DELETE_AUDIO_AFTER_COMPLETION:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      transcriber:
+        condition: service_healthy
+    restart: always
+
+volumes:
+  postgres_data:
+  redis_data:
+  shared_audio:
+  whisper_cache:
