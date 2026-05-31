@@ -55,8 +55,8 @@ services:
 
   backend-api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: postnotes-backend-api
     ports:
       - "3000:3000"
@@ -81,8 +81,8 @@ services:
 
   backend-worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: postnotes-backend-worker
     command: npm run worker
     volumes:

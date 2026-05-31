@@ -15,6 +15,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../../frontend/dist')));
 
 // Keep track of active SSE connections per note ID
 const sseClients = new Map<string, express.Response[]>();
@@ -67,11 +68,24 @@ queueEvents.on('progress', ({ jobId, data }) => {
 
 // Set up the audio files storage location
 // In production inside docker, this will map to the /app/shared_audio volume
-const uploadDir = process.env.UPLOAD_DIR || '/app/shared_audio';
+let uploadDir = process.env.UPLOAD_DIR || '/app/shared_audio';
 
-// Ensure the upload directory exists
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// Ensure the upload directory exists, with a dynamic local fallback for host development EACCES errors
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (err: any) {
+  if (err.code === 'EACCES') {
+    const fallbackDir = path.join(__dirname, '../uploads');
+    console.warn(`[API] Permission denied to write to '${uploadDir}'. Falling back to local host directory: '${fallbackDir}'`);
+    uploadDir = fallbackDir;
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+  } else {
+    throw err;
+  }
 }
 
 // Multer Storage configuration
@@ -390,6 +404,12 @@ app.get('/api/notes/:noteId/progress', (req, res) => {
     }
     console.log(`[SSE] Client disconnected from note ${noteId}`);
   });
+});
+
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
+  }
 });
 
 app.listen(PORT, () => {

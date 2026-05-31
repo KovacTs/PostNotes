@@ -5,6 +5,10 @@ yarn-debug.log*
 yarn-error.log*
 .eslintcache
 
+# Local Audio Uploads (Privacy protection)
+backend/uploads/
+uploads/
+
 # Build / Output / Packaging
 dist/
 out/
